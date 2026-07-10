@@ -2,94 +2,86 @@
 
 **本地万能文件预览与编辑器。一个窗口，打开一切。**
 
-LocalLens 是一个纯本地运行的文件查看器：拖一个文件进来，它就能打开。PDF、Word、Excel、Markdown、图片、音视频、代码、压缩包、3D 模型、字体，全部在同一个界面里预览，其中文本类格式还能直接编辑并写回原文件。
+拖一个文件进来就能打开：PDF、Word、PPT、Excel、Markdown、图片、音视频、代码、压缩包、3D 模型、字体。文本类文件可以直接编辑并写回原文件。
 
-没有账号，没有订阅，没有云端。所有解析和渲染都发生在你自己的浏览器里，**不发出任何网络请求，任何数据都不会离开你的电脑**。
+没有账号，没有订阅，没有云端。所有解析和渲染都发生在你自己的电脑上，服务只绑定 127.0.0.1，**任何数据都不会离开本机**。
 
-![](https://img.shields.io/badge/依赖-零安装-brightgreen) ![](https://img.shields.io/badge/运行-100%25_本地-blue) ![](https://img.shields.io/badge/许可-MIT-lightgrey)
+![](https://img.shields.io/badge/依赖-仅需_Python_3-brightgreen) ![](https://img.shields.io/badge/运行-100%25_本地-blue) ![](https://img.shields.io/badge/许可-MIT-lightgrey)
 
-## 快速开始
+## 快速开始（macOS）
 
 ```bash
 git clone https://github.com/cocohahaha/locallens.git
 cd locallens
+./make-app.command   # 生成 LocalLens.app（只需一次）
 ```
 
-**macOS**：双击 `start.command`（或在终端运行 `./start.command`）。
+生成的 **LocalLens.app** 就是日常入口：
 
-**任何系统**：在项目目录起一个静态服务即可：
+- 双击启动，得到一个无浏览器边框的独立应用窗口；
+- 把任意文件**拖到它的图标上**直接打开；
+- 在文件上「右键 → 打开方式 → LocalLens」；
+- 建议把它拖进「应用程序」并固定到 Dock。
 
-```bash
-python3 -m http.server 8437
-# 然后打开 http://localhost:8437/
-```
+不想生成 App 的话，双击 `start.command` 也一样能用。
 
-唯一的要求是本机有 Python 3（macOS 自带）和一个现代浏览器。推荐 Chrome 或 Edge：它们支持 File System Access API，编辑后可以一键写回原文件；其他浏览器会降级为「下载保存」。
+**其他系统**：`python3 server.py` 然后打开 `http://localhost:8437/`。
 
-> 为什么需要起一个本地服务，而不是直接双击 index.html？因为 PDF 渲染依赖的 Web Worker 和 ES Module 在 `file://` 协议下会被浏览器禁止。服务只绑定在 127.0.0.1，不对外暴露。
+要求：Python 3（macOS 自带）+ 现代浏览器。推荐 Chrome/Edge（独立窗口模式 + 文件直接写回保存）。
 
 ## 支持的格式
 
 | 类别 | 格式 | 能做什么 |
 |------|------|----------|
-| 文档 | PDF | 分页渲染、缩放、提取全文为 .txt |
-| 文档 | Word (.docx) | 排版预览、导出 HTML、提取纯文本、打印/存 PDF |
-| 表格 | Excel (.xlsx/.xls/.xlsm/.ods) | 多工作表切换、转 CSV、转 JSON |
-| 表格 | CSV / TSV | 表格视图、转 JSON、转 Excel |
-| 文本 | Markdown | 实时双栏编辑、保存回原文件、导出 HTML、打印/存 PDF |
+| 文档 | PDF | 分页渲染、缩放、提取全文。内置 CJK 字体映射，中文 PDF 不乱码 |
+| 文档 | Word (.docx) | 排版预览、导出 HTML、提取纯文本、存 PDF |
+| 文档 | PowerPoint (.pptx) | 大纲视图：逐页标题、正文、图片，提取全文 |
+| 表格 | Excel (.xlsx/.xls/.xlsm/.ods) | 多工作表切换、转 CSV（带 BOM 不乱码）、转 JSON |
+| 表格 | CSV / TSV | 表格视图、转 JSON、转 Excel。**GBK/UTF-8 编码自动识别** |
+| 文本 | Markdown | 双栏实时编辑、保存写回、导出 HTML、存 PDF |
 | 文本 | HTML | 沙箱安全渲染（默认禁脚本）、查看源码 |
-| 文本 | JSON / JSONL / YAML | 自动美化、语法高亮、编辑、JSON ↔ YAML 互转、minify |
-| 代码 | JS/TS/Python/Go/Rust/Java/Swift/SQL/Shell 等 40+ 种 | 语法高亮、编辑保存、复制全文 |
-| 图片 | PNG/JPG/GIF/WebP/AVIF/BMP/ICO/SVG | 缩放查看、格式互转（PNG ↔ JPG，SVG 栅格化） |
-| 视频 | MP4/WebM/MOV/M4V/OGV | 播放、截取当前帧为 PNG |
-| 音频 | MP3/WAV/FLAC/M4A/AAC/OGG/Opus | 播放 |
-| 压缩包 | ZIP/EPUB/JAR/APK/CBZ 等 | 列出内容，点击内部文件直接预览、单文件解压 |
-| 3D | GLB/GLTF/OBJ/STL | 实时渲染，拖动旋转、滚轮缩放、右键平移 |
-| 字体 | TTF/OTF/WOFF/WOFF2 | 多字号预览、自定义文字实时试字 |
-| 其他 | 未识别的二进制 | 自动嗅探：文本则高亮显示，否则十六进制查看 |
+| 文本 | JSON / JSONL / YAML | 自动美化、高亮、编辑、JSON ↔ YAML 互转 |
+| 代码 | 40+ 语言 | 高亮、编辑保存、复制全文、手动切换编码 |
+| 图片 | PNG/JPG/GIF/WebP/AVIF/BMP/ICO/SVG | 缩放、格式互转 |
+| 图片 | **HEIC/HEIF**（iPhone 照片） | 本地解码预览、导出 JPG |
+| 视频 | MP4/WebM/MOV/M4V | 播放、截取当前帧 |
+| 音频 | MP3/WAV/FLAC/M4A/AAC/OGG | 播放 |
+| 压缩包 | ZIP/EPUB/JAR/APK + **TAR/GZ/TGZ** | 列出内容（自动过滤 macOS 垃圾文件），点开内部文件直接预览 |
+| 3D | GLB/GLTF/OBJ/STL | 实时渲染，旋转/缩放/平移 |
+| 字体 | TTF/OTF/WOFF/WOFF2 | 多字号预览、自定义试字 |
+| 其他 | 未识别格式 | 文本自动嗅探（含编码），二进制转十六进制查看 |
 
-## 交互设计
+中文用户最常踩的坑都处理过：Excel 导出的 GBK 编码 CSV 自动识别不乱码；中文字体 PDF 正常渲染；导出的 CSV 带 BOM，Excel 双击直接打开。
 
-界面遵循「内容优先」：打开文件后工具栏自动隐藏，鼠标移到窗口顶部时浮现；左缘悬停呼出已打开文件列表。快捷键：`⌘O` 打开，`⌘S` 保存，`Esc` 回到首页。
+## 界面
 
-编辑与保存的行为：
+左侧固定侧栏：打开按钮、已打开文件列表、最近打开（可 ⌘B 收起）。顶部常驻工具栏：当前文件信息 + 当前格式可用的所有操作。支持一次拖入多个文件甚至整个文件夹，在侧栏里切换。
 
-- 通过「打开」按钮或拖拽进来的文件（Chrome/Edge），保存时**直接写回原文件**，首次会弹一次系统授权。
-- 其他情况自动降级为「另存为 / 下载」。
-- 有未保存修改时切换文件或关闭页面会提醒。
+快捷键：`⌘O` 打开 · `⌘S` 保存 · `⌘B` 侧栏 · `Esc` 回首页。
 
-## 试一试
+## 保存与安全
 
-仓库自带一组示例文件，起服务后访问：
+- 通过 App 图标 / 「打开方式」/ 最近列表打开的文件：保存时**直接写回原路径**。
+- 拖拽或选择器打开的文件（Chrome/Edge）：通过浏览器授权后写回。
+- 其余情况降级为「另存为」。
 
-```
-http://localhost:8437/?open=samples/demo.md      # Markdown 编辑
-http://localhost:8437/?open=samples/demo.xlsx    # Excel 多表
-http://localhost:8437/?open=samples/demo.stl     # 3D 模型
-http://localhost:8437/?open=samples/demo.zip     # 压缩包浏览
-```
+本地服务的写回接口只接受来自 LocalLens 自己页面的请求（Origin 校验），且只允许覆盖已存在的文件；文件读取接口同样有来源校验。服务永远只监听 127.0.0.1。
 
 ## 技术说明
 
-纯静态页面，无构建步骤，无 Node 依赖，clone 下来就能跑。所有第三方库都已打包在 `vendor/` 目录内（离线可用）：
+前端为纯静态页面 + 一个约 100 行的 Python 标准库服务（`server.py`，负责路径直开与写回）。无构建步骤，无 npm install，全部第三方库已打包在 `vendor/`（离线可用）：
 
-- [pdf.js](https://mozilla.github.io/pdf.js/) — PDF 渲染
-- [SheetJS](https://sheetjs.com/) — Excel 解析
-- [mammoth.js](https://github.com/mwilliamson/mammoth.js) — docx 转 HTML
-- [marked](https://marked.js.org/) — Markdown 渲染
-- [highlight.js](https://highlightjs.org/) — 代码高亮
-- [JSZip](https://stuk.github.io/jszip/) — 压缩包解析
-- [three.js](https://threejs.org/) — 3D 渲染
-- [js-yaml](https://github.com/nodeca/js-yaml) — YAML 解析
+[pdf.js](https://mozilla.github.io/pdf.js/) · [SheetJS](https://sheetjs.com/) · [mammoth.js](https://github.com/mwilliamson/mammoth.js) · [marked](https://marked.js.org/) · [highlight.js](https://highlightjs.org/) · [JSZip](https://stuk.github.io/jszip/) · [fflate](https://github.com/101arrowz/fflate) · [three.js](https://threejs.org/) · [js-yaml](https://github.com/nodeca/js-yaml) · [heic-to](https://github.com/hoppergee/heic-to)
 
-应用本体是一个约 900 行的 ES Module（`js/app.js`），按扩展名路由到对应查看器，pdf.js 和 three.js 均为按需动态加载，首屏不背包袱。
+PPTX 大纲、TAR 解析、CSV 解析、编码嗅探为自研实现。pdf.js、three.js、HEIC 解码均按需动态加载，首屏无负担。
 
 ## 已知边界
 
-- `.doc`（旧版 Word）、`.pptx`、`.rar`、`.7z` 暂不支持。
-- `.gltf` 若引用外部贴图/bin 文件，需使用打包好的 `.glb`。
-- 视频/音频解码能力取决于浏览器（如 HEVC 需要系统支持）。
-- 大表格显示前 3000 行，避免页面卡死。
+- 旧版二进制 Office（.doc/.ppt）与 iWork 格式：给出转换指引，不直接渲染。
+- RAR/7z：建议先用 [Keka](https://www.keka.io/) 解压。
+- `.gltf` 引用外部资源时请改用打包的 `.glb`。
+- 视频解码能力取决于浏览器（MKV/HEVC 建议用 IINA/VLC）。
+- 大表格显示前 3000 行（导出转换不受影响）。
 
 ## 许可
 

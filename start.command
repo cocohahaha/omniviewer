@@ -1,16 +1,23 @@
 #!/bin/zsh
-# LocalLens 启动器：在本机起一个静态服务并打开浏览器。
-# 双击本文件即可使用；再次双击会复用已在运行的服务。
+# LocalLens 启动器：起本地服务并打开独立应用窗口。
+# 双击即用；重复双击会复用已在运行的服务。
 cd "$(dirname "$0")"
 PORT=${LOCALLENS_PORT:-8437}
+URL="http://127.0.0.1:$PORT/"
 
 if ! lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
-  nohup python3 -m http.server $PORT --bind 127.0.0.1 >/dev/null 2>&1 &
-  # 等服务就绪
-  for i in {1..20}; do
-    curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break
-    sleep 0.15
+  nohup python3 server.py >/dev/null 2>&1 &
+  for i in {1..30}; do
+    curl -s -o /dev/null "http://127.0.0.1:$PORT/api/ping" && break
+    sleep 0.1
   done
 fi
 
-open "http://127.0.0.1:$PORT/"
+# 优先用 Chrome/Edge 的独立应用窗口（无浏览器边框，更像原生 App）
+if [ -d "/Applications/Google Chrome.app" ]; then
+  open -na "Google Chrome" --args --app="$URL"
+elif [ -d "/Applications/Microsoft Edge.app" ]; then
+  open -na "Microsoft Edge" --args --app="$URL"
+else
+  open "$URL"
+fi

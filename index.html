@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LocalLens · 本地万能文件预览</title>
+<title>LocalLens</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="vendor/hljs/styles/github-dark.min.css">
@@ -17,51 +17,64 @@
 </head>
 <body>
 
-<header id="toolbar" class="toolbar">
-  <div class="tb-left">
-    <button id="btn-home" class="tb-btn" title="回到首页">◈</button>
-    <span id="file-name" class="file-name"></span>
-    <span id="dirty-dot" class="dirty-dot" hidden>●</span>
+<aside id="sidebar">
+  <div class="sb-brand">
+    <span class="sb-logo">🔍</span>
+    <span class="sb-name">LocalLens</span>
   </div>
-  <div id="tb-actions" class="tb-actions"></div>
-  <div class="tb-right">
-    <button id="btn-open" class="tb-btn" title="打开文件 (⌘O)">打开</button>
+  <button id="btn-open-sb" class="sb-open-btn">＋ 打开文件…</button>
+  <div class="sb-section" id="sb-files-section" hidden>
+    <div class="sb-title">已打开</div>
+    <ul id="file-list" class="file-list"></ul>
   </div>
-</header>
-
-<aside id="sidebar" class="sidebar">
-  <div class="sb-title">已打开的文件</div>
-  <ul id="file-list" class="file-list"></ul>
+  <div class="sb-section" id="sb-recent-section" hidden>
+    <div class="sb-title">最近打开</div>
+    <ul id="recent-list" class="file-list recent"></ul>
+  </div>
+  <div class="sb-foot">本地运行 · 不联网 · 不上传</div>
 </aside>
-<div id="sidebar-hotzone"></div>
 
-<main id="stage">
-  <section id="home" class="home">
-    <div class="home-card">
-      <div class="home-logo">🔍</div>
-      <h1>LocalLens</h1>
-      <p class="home-sub">本地万能文件预览与编辑，一个窗口打开一切</p>
-      <div id="dropzone" class="dropzone">
-        <p><strong>拖拽文件到这里</strong></p>
-        <p class="dz-or">或</p>
-        <button id="btn-open-big" class="btn-primary">选择文件</button>
-      </div>
-      <div class="fmt-grid">
-        <div class="fmt"><b>文档</b><span>PDF · Word · Excel · Markdown · HTML · CSV</span></div>
-        <div class="fmt"><b>图片</b><span>PNG · JPG · GIF · WebP · SVG · AVIF · BMP</span></div>
-        <div class="fmt"><b>音视频</b><span>MP4 · MOV · WebM · MP3 · WAV · FLAC</span></div>
-        <div class="fmt"><b>代码</b><span>JS · TS · Python · Go · Rust · SQL · JSON · YAML…</span></div>
-        <div class="fmt"><b>压缩包</b><span>ZIP · EPUB（列目录、点开即预览）</span></div>
-        <div class="fmt"><b>3D / 字体</b><span>GLB · GLTF · OBJ · STL · TTF · OTF · WOFF</span></div>
-      </div>
-      <p class="home-note">所有处理都在本机浏览器内完成，不联网、不上传任何数据。</p>
+<div id="main">
+  <header id="toolbar">
+    <button id="btn-sidebar" class="icon-btn" title="侧栏 (⌘B)">☰</button>
+    <button id="btn-home" class="icon-btn" title="首页 (Esc)">⌂</button>
+    <div class="tb-file">
+      <span id="file-name"></span>
+      <span id="file-meta"></span>
+      <span id="dirty-dot" hidden>●</span>
     </div>
-  </section>
-  <section id="viewer" class="viewer" hidden></section>
-</main>
+    <div id="tb-actions"></div>
+  </header>
 
-<div id="drop-overlay" class="drop-overlay" hidden><div>松开即打开</div></div>
-<div id="toast" class="toast" hidden></div>
+  <main id="stage">
+    <section id="home">
+      <div class="home-inner">
+        <div id="dropzone" class="dropzone">
+          <div class="dz-icon">⤓</div>
+          <p class="dz-main">把文件或文件夹拖到这里</p>
+          <p class="dz-sub">或者 <button id="btn-open-big" class="linklike">选择文件</button> · 快捷键 ⌘O</p>
+        </div>
+        <div id="home-recent" class="home-recent" hidden>
+          <div class="hr-title">最近打开</div>
+          <ul id="home-recent-list"></ul>
+        </div>
+        <div class="fmt-grid">
+          <div class="fmt"><b>📄 文档</b><span>PDF · Word · PPT · Excel · Markdown · CSV · HTML</span></div>
+          <div class="fmt"><b>🖼 图片</b><span>PNG · JPG · GIF · WebP · SVG · HEIC · AVIF</span></div>
+          <div class="fmt"><b>🎬 音视频</b><span>MP4 · MOV · WebM · MP3 · WAV · FLAC</span></div>
+          <div class="fmt"><b>⌨️ 代码</b><span>40+ 语言高亮 · JSON/YAML 互转 · 中文编码自动识别</span></div>
+          <div class="fmt"><b>📦 压缩包</b><span>ZIP · TAR · GZ · EPUB，点开内部文件直接预览</span></div>
+          <div class="fmt"><b>🧊 3D 与字体</b><span>GLB · GLTF · OBJ · STL · TTF · OTF · WOFF</span></div>
+        </div>
+      </div>
+    </section>
+    <section id="viewer" hidden></section>
+  </main>
+</div>
+
+<div id="drop-overlay" hidden><div>松开即打开</div></div>
+<div id="toast" hidden></div>
+<div id="loading" hidden><div class="spinner"></div><span id="loading-text">正在打开…</span></div>
 <input type="file" id="file-input" multiple hidden>
 
 <script type="module" src="js/app.js"></script>
