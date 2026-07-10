@@ -1,0 +1,8 @@
+app: LocalLens
+offline: true
+viewers:
+  - image
+  - pdf
+  - spreadsheet
+limits:
+  max_table_rows: 3000

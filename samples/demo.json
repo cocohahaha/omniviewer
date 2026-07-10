@@ -1,0 +1,1 @@
+{"name":"LocalLens","version":"1.0.0","local":true,"formats":{"documents":["pdf","docx","xlsx","md"],"media":["png","mp4","mp3"],"count":100},"tags":["viewer","editor","offline"]}
