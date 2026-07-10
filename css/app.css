@@ -258,6 +258,58 @@ body.sb-closed #sidebar { margin-left: calc(-1 * var(--sidebar-w)); }
 /* HTML */
 .html-frame { width: 100%; height: 100%; border: none; background: #fff; }
 
+/* 设计文件预览 */
+.design-page { max-width: 880px; margin: 0 auto; padding: 26px 24px 60px; }
+.design-hero { text-align: center; background: repeating-conic-gradient(#17181d 0% 25%, #121317 0% 50%) 0 / 24px 24px; border-radius: 12px; border: 1px solid var(--border); padding: 20px; }
+.design-hero img { max-width: 100%; max-height: 56vh; box-shadow: 0 8px 40px rgba(0,0,0,.45); border-radius: 4px; }
+.meta-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; margin-top: 16px; padding: 6px 0; }
+.meta-row { display: flex; gap: 14px; padding: 7px 16px; font-size: 13px; }
+.meta-k { color: var(--fg-faint); flex: 0 0 130px; }
+.meta-v { color: var(--fg); word-break: break-all; }
+.gallery-title { color: var(--fg-faint); font-size: 12px; letter-spacing: .05em; margin: 22px 0 10px; font-weight: 600; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.gallery-cell { background: repeating-conic-gradient(#17181d 0% 25%, #121317 0% 50%) 0 / 16px 16px; border: 1px solid var(--border); border-radius: 8px; padding: 8px; cursor: pointer; text-align: center; }
+.gallery-cell:hover { border-color: var(--accent); }
+.gallery-cell img { max-width: 100%; max-height: 110px; border-radius: 3px; }
+.gallery-size { color: var(--fg-faint); font-size: 10.5px; margin-top: 5px; }
+.design-hint { color: var(--fg-dim); font-size: 12.5px; margin-top: 20px; line-height: 1.7; }
+
+/* PSD 图层面板 */
+.layer-panel {
+  position: absolute; top: 12px; right: 12px; width: 260px; max-height: calc(100% - 24px);
+  overflow-y: auto; background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
+  backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 0; z-index: 5;
+}
+.lp-title { padding: 2px 14px 8px; color: var(--fg-faint); font-size: 11px; font-weight: 600; letter-spacing: .05em; }
+.lp-row { padding: 5px 14px; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp-hidden { color: var(--fg-faint); }
+
+/* XMind 大纲 */
+.xm-page { max-width: 860px; margin: 0 auto; padding: 26px 28px 60px; }
+.xm-sheet-title { color: var(--fg-faint); font-size: 12px; letter-spacing: .06em; margin: 26px 0 8px; font-weight: 600; }
+.xm-center { font-size: 21px; margin: 6px 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.xm-root details, .xm-root .xm-leaf { margin: 2px 0; }
+.xm-root summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 6px; }
+.xm-root summary::before { content: '▸'; color: var(--fg-faint); font-size: 11px; transition: transform .12s; }
+.xm-root details[open] > summary::before { transform: rotate(90deg); }
+.xm-root summary:hover { background: var(--bg-raise); }
+.xm-kids { margin-left: 22px; border-left: 1px solid var(--border); padding-left: 10px; }
+.xm-leaf { padding: 4px 8px 4px 27px; }
+.xm-line { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.xm-title { font-size: 14px; }
+.xm-count { color: var(--fg-faint); font-size: 11px; background: var(--bg-raise); border-radius: 10px; padding: 1px 8px; }
+.xm-chip { color: var(--fg-dim); font-size: 11px; background: var(--bg-raise); border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px; }
+.xm-note { color: var(--fg-faint); font-size: 12px; margin: 2px 0 4px 27px; border-left: 2px solid var(--border); padding-left: 10px; line-height: 1.6; }
+.xm-link { text-decoration: none; color: #6cb2ff; }
+
+/* Claude 技能包 */
+.skill-head { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; }
+.skill-kind { color: var(--accent); font-size: 10.5px; font-weight: 700; letter-spacing: .14em; }
+.skill-name { margin: 8px 0 6px; font-size: 24px; }
+.skill-desc { color: var(--fg-dim); margin: 0 0 6px; line-height: 1.65; }
+.skill-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
 /* 十六进制 */
 .hex-wrap { padding: 22px 30px; font: 12.5px/1.75 "SF Mono", ui-monospace, Menlo, monospace; color: var(--fg-dim); white-space: pre; overflow: auto; height: 100%; }
 .hex-wrap .hx-off { color: #5b7fbb; }

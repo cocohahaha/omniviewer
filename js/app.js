@@ -423,7 +423,18 @@ const EXT = {
   zip: ['zip', 'epub', 'cbz', 'jar', 'apk', 'xpi', 'crx', 'ipa'],
   tar: ['tar', 'gz', 'tgz'],
   unsupportedArchive: ['rar', '7z', 'bz2', 'xz', 'zst', 'dmg'],
-  model3d: ['glb', 'gltf', 'obj', 'stl'],
+  psd: ['psd', 'psb'],
+  ai: ['ai'],
+  tiff: ['tif', 'tiff'],
+  raw: ['cr2', 'cr3', 'nef', 'arw', 'dng', 'raf', 'orf', 'rw2', 'srw', 'pef'],
+  sketch: ['sketch'],
+  procreate: ['procreate'],
+  xd: ['xd'],
+  fig: ['fig'],
+  xmind: ['xmind'],
+  skill: ['skill'],
+  designHint: ['eps', 'indd', 'idml', 'afdesign', 'afphoto', 'clip', 'cdr'],
+  model3d: ['glb', 'gltf', 'obj', 'stl', 'fbx'],
   font: ['ttf', 'otf', 'woff', 'woff2'],
   json: ['json', 'jsonl', 'geojson', 'ipynb', 'webmanifest'],
   yaml: ['yaml', 'yml'],
@@ -456,6 +467,17 @@ function pickViewer(ext, mime) {
   if (EXT.csv.includes(ext)) return viewCSV;
   if (EXT.docx.includes(ext)) return viewDocx;
   if (EXT.pptx.includes(ext)) return viewPptx;
+  if (EXT.psd.includes(ext)) return viewPsd;
+  if (EXT.ai.includes(ext)) return viewAI;
+  if (EXT.tiff.includes(ext)) return viewTiff;
+  if (EXT.raw.includes(ext)) return viewRaw;
+  if (EXT.sketch.includes(ext)) return viewSketch;
+  if (EXT.procreate.includes(ext)) return viewProcreate;
+  if (EXT.xd.includes(ext)) return viewXd;
+  if (EXT.fig.includes(ext)) return viewFig;
+  if (EXT.xmind.includes(ext)) return viewXmind;
+  if (EXT.skill.includes(ext)) return viewSkill;
+  if (EXT.designHint.includes(ext)) return viewDesignHint;
   if (EXT.zip.includes(ext)) return viewZip;
   if (EXT.tar.includes(ext)) return viewTar;
   if (EXT.unsupportedArchive.includes(ext)) return viewUnsupportedArchive;
@@ -1181,6 +1203,9 @@ async function view3D(rec, ext) {
     const { OBJLoader } = await import('../vendor/three/jsm/loaders/OBJLoader.js');
     object = new OBJLoader().parse(await rec.file.text());
     object.traverse(n => { if (n.isMesh && !n.material) n.material = new THREE.MeshStandardMaterial({ color: 0xb8bcc6 }); });
+  } else if (ext === 'fbx') {
+    const { FBXLoader } = await import('../vendor/three/jsm/loaders/FBXLoader.js');
+    object = new FBXLoader().parse(await rec.file.arrayBuffer(), '');
   } else {
     const { GLTFLoader } = await import('../vendor/three/jsm/loaders/GLTFLoader.js');
     const loader = new GLTFLoader();
@@ -1331,6 +1356,565 @@ async function viewUnknown(rec) {
   wrap.innerHTML = (bytes.length > LIMIT ? `（二进制文件，仅显示前 64 KB / 共 ${fmtSize(bytes.length)}）\n\n` : '（未识别的二进制格式，十六进制查看）\n\n') + lines.join('\n');
   ui.viewer.appendChild(wrap);
   addRevealAction(rec);
+}
+
+/* ============================== 设计 / 创意格式 ============================== */
+
+/** 在字节流中提取内嵌 JPEG（RAW 预览图、fig 素材等） */
+function extractJpegs(bytes, minLen = 8000, maxCount = 12) {
+  const out = [];
+  let i = 0;
+  while (i + 3 < bytes.length && out.length < maxCount) {
+    if (bytes[i] === 0xFF && bytes[i + 1] === 0xD8 && bytes[i + 2] === 0xFF) {
+      let end = -1;
+      for (let j = i + 2; j + 1 < bytes.length; j++) {
+        if (bytes[j] === 0xFF && bytes[j + 1] === 0xD9) { end = j + 2; break; }
+      }
+      if (end < 0) break;
+      if (end - i >= minLen) out.push(bytes.subarray(i, end));
+      i = end;
+    } else i++;
+  }
+  return out.sort((a, b) => b.length - a.length);
+}
+
+/** 在字节流中提取内嵌 PNG */
+function extractPngs(bytes, maxCount = 24) {
+  const SIG = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+  const out = [];
+  for (let i = 0; i + 8 < bytes.length && out.length < maxCount; i++) {
+    if (SIG.every((v, k) => bytes[i + k] === v)) {
+      for (let j = i + 8; j + 8 <= bytes.length; j++) {
+        if (bytes[j] === 0x49 && bytes[j + 1] === 0x45 && bytes[j + 2] === 0x4E && bytes[j + 3] === 0x44) {
+          out.push(bytes.subarray(i, j + 8));
+          i = j + 7;
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+function sniffImageMime(bytes) {
+  if (bytes[0] === 0x89 && bytes[1] === 0x50) return 'image/png';
+  if (bytes[0] === 0xFF && bytes[1] === 0xD8) return 'image/jpeg';
+  if (bytes[0] === 0x47 && bytes[1] === 0x49) return 'image/gif';
+  if (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42) return 'image/webp';
+  return null;
+}
+
+/** 设计文件通用预览页：主图 + 元信息 + 素材图集 */
+function renderDesignPreview({ hero, metaRows, gallery, hint }) {
+  const urls = [];
+  state.cleanup = () => urls.forEach(u => URL.revokeObjectURL(u));
+  const scroller = el('div', 'viewer-full');
+  scroller.style.cssText = 'overflow:auto;height:100%';
+  const page = el('div', 'design-page');
+
+  if (hero) {
+    const url = URL.createObjectURL(hero);
+    urls.push(url);
+    const wrap = el('div', 'design-hero');
+    const img = el('img');
+    img.src = url;
+    wrap.appendChild(img);
+    page.appendChild(wrap);
+  }
+  if (metaRows && metaRows.length) {
+    const card = el('div', 'meta-card');
+    for (const [k, v] of metaRows) {
+      const row = el('div', 'meta-row');
+      row.append(el('span', 'meta-k', k), el('span', 'meta-v', String(v)));
+      card.appendChild(row);
+    }
+    page.appendChild(card);
+  }
+  if (gallery && gallery.length) {
+    page.appendChild(el('div', 'gallery-title', `内嵌素材（${gallery.length}）· 点击可导出`));
+    const grid = el('div', 'gallery-grid');
+    for (const g of gallery) {
+      const url = URL.createObjectURL(g.blob);
+      urls.push(url);
+      const cell = el('div', 'gallery-cell');
+      const img = el('img');
+      img.src = url;
+      img.loading = 'lazy';
+      cell.append(img, el('div', 'gallery-size', fmtSize(g.blob.size)));
+      cell.title = '点击导出 ' + g.name;
+      cell.onclick = () => downloadBlob(g.name, g.blob);
+      grid.appendChild(cell);
+    }
+    page.appendChild(grid);
+  }
+  if (hint) page.appendChild(el('p', 'design-hint', hint));
+  scroller.appendChild(page);
+  ui.viewer.appendChild(scroller);
+}
+
+/** 把 rec 临时切换为「压缩包浏览」模式 */
+function addViewAsZipAction(rec) {
+  addAction('浏览包内文件', async () => {
+    ui.viewer.innerHTML = '';
+    ui.actions.innerHTML = '';
+    if (state.cleanup) { try { state.cleanup(); } catch {} state.cleanup = null; }
+    await viewZip(rec);
+    addSep();
+    addAction('← 返回预览', () => openRecord(rec, { force: true }));
+  });
+}
+
+/* ---------- Photoshop ---------- */
+
+async function viewPsd(rec) {
+  showLoading('正在解析 PSD …');
+  const { readPsd } = await import('../vendor/ag-psd.mjs');
+  const buf = await rec.file.arrayBuffer();
+  const psd = readPsd(buf, { skipLayerImageData: true, skipThumbnail: false });
+
+  const canvas = psd.canvas || psd.thumbnail || null;
+  const layers = [];
+  (function walk(children, depth) {
+    for (const c of children || []) {
+      layers.push({ name: c.name || '(未命名)', depth, hidden: c.hidden, group: !!c.children });
+      if (c.children) walk(c.children, depth + 1);
+    }
+  })(psd.children, 0);
+
+  const stage = el('div', 'img-stage viewer-full');
+  if (canvas) {
+    canvas.style.maxWidth = 'calc(100% - 48px)';
+    canvas.style.maxHeight = 'calc(100% - 48px)';
+    canvas.style.boxShadow = '0 8px 40px rgba(0,0,0,.5)';
+    stage.appendChild(canvas);
+  } else {
+    stage.appendChild(el('div', 'center-info', '这个 PSD 没有保存合成图（保存时未勾选「最大兼容」），只能显示图层结构。'));
+  }
+  ui.viewer.appendChild(stage);
+  setMeta(`${psd.width}×${psd.height} · ${layers.length} 个图层 · ${fmtSize(rec.file.size)}`);
+
+  // 图层面板
+  const panel = el('div', 'layer-panel');
+  panel.hidden = true;
+  panel.appendChild(el('div', 'lp-title', `图层（${layers.length}）`));
+  for (const l of layers) {
+    const row = el('div', 'lp-row' + (l.hidden ? ' lp-hidden' : ''));
+    row.style.paddingLeft = 12 + l.depth * 16 + 'px';
+    row.textContent = (l.group ? '📁 ' : '') + l.name + (l.hidden ? '（隐藏）' : '');
+    panel.appendChild(row);
+  }
+  ui.viewer.appendChild(panel);
+
+  addAction('图层列表', () => { panel.hidden = !panel.hidden; });
+  if (canvas && canvas.toBlob) {
+    addAction('导出 PNG', () => canvas.toBlob(b => b && downloadBlob(baseName(rec.name) + '.png', b), 'image/png'));
+  }
+  addRevealAction(rec);
+}
+
+/* ---------- Illustrator（现代 .ai 内嵌 PDF） ---------- */
+
+async function viewAI(rec) {
+  const head = new Uint8Array(await rec.file.slice(0, 2048).arrayBuffer());
+  const headText = new TextDecoder('latin1').decode(head);
+  if (headText.includes('%PDF')) {
+    await viewPDF(rec);
+    setMeta(ui.fileMeta.textContent + ' · AI（PDF 兼容模式）');
+    return;
+  }
+  showInfo('🎨', '这个 .ai 文件没有以 PDF 兼容模式保存',
+    '在 Illustrator 里「存储为」时勾选 Create PDF Compatible File 再保存，即可直接预览。');
+}
+
+/* ---------- TIFF ---------- */
+
+async function viewTiff(rec) {
+  const buf = await rec.file.arrayBuffer();
+  const ifds = UTIF.decode(buf);
+  if (!ifds.length) throw new Error('无法解析 TIFF');
+  UTIF.decodeImage(buf, ifds[0]);
+  const rgba = UTIF.toRGBA8(ifds[0]);
+  const canvas = el('canvas');
+  canvas.width = ifds[0].width;
+  canvas.height = ifds[0].height;
+  const imgData = new ImageData(new Uint8ClampedArray(rgba.buffer), ifds[0].width, ifds[0].height);
+  canvas.getContext('2d').putImageData(imgData, 0, 0);
+
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+  await viewImage(rec, 'tiff', blob);
+  setMeta(`${ifds[0].width}×${ifds[0].height} · ${fmtSize(rec.file.size)}` +
+    (ifds.length > 1 ? ` · 共 ${ifds.length} 页（显示第 1 页）` : ''));
+}
+
+/* ---------- 相机 RAW：提取内嵌预览图 ---------- */
+
+async function viewRaw(rec, ext) {
+  showLoading('正在提取 RAW 预览图 …');
+  const bytes = new Uint8Array(await rec.file.arrayBuffer());
+  // 注意：RAW 的传感器数据本身常是「无损 JPEG」，浏览器解不了，
+  // 所以按体积从大到小逐个试解码，取第一个真正可显示的预览图
+  const jpegs = extractJpegs(bytes, 30000, 10);
+  let blob = null;
+  for (const seg of jpegs) {
+    const candidate = new Blob([seg], { type: 'image/jpeg' });
+    try {
+      const bmp = await createImageBitmap(candidate);
+      bmp.close();
+      blob = candidate;
+      break;
+    } catch {}
+  }
+  if (!blob) {
+    showInfo('📷', `没能在这个 .${ext} 里找到可显示的内嵌预览图`,
+      'RAW 原始数据需要专业软件解码，可以用 Lightroom / darktable 打开。');
+    return;
+  }
+  await viewImage(rec, ext, blob);
+  setMeta(fmtSize(rec.file.size) + ' · 内嵌预览图（非全尺寸解码）');
+  addSep();
+  addAction('导出预览 JPG', () => downloadBlob(baseName(rec.name) + '_preview.jpg', blob));
+}
+
+/* ---------- Sketch / Procreate / Adobe XD / Figma ---------- */
+
+async function zipEntryBlob(zip, path) {
+  const f = zip.file(path);
+  return f ? f.async('blob') : null;
+}
+
+async function firstExisting(zip, paths) {
+  for (const p of paths) {
+    const b = await zipEntryBlob(zip, p);
+    if (b) return b;
+  }
+  return null;
+}
+
+async function viewSketch(rec) {
+  const zip = await JSZip.loadAsync(await rec.file.arrayBuffer());
+  const hero = await firstExisting(zip, ['previews/preview.png', 'preview.png']);
+  const metaRows = [];
+  try {
+    const meta = JSON.parse(await zip.file('meta.json').async('text'));
+    if (meta.appVersion) metaRows.push(['Sketch 版本', meta.appVersion]);
+    const pages = Object.values(meta.pagesAndArtboards || {});
+    if (pages.length) {
+      metaRows.push(['页面', pages.map(p => p.name).join('、')]);
+      const abs = pages.flatMap(p => Object.values(p.artboards || {}).map(a => a.name));
+      if (abs.length) metaRows.push([`画板（${abs.length}）`, abs.slice(0, 12).join('、') + (abs.length > 12 ? ' …' : '')]);
+    }
+  } catch {}
+  renderDesignPreview({
+    hero, metaRows,
+    hint: hero ? 'Sketch 内置预览图。完整编辑请用 Sketch 打开。' : '这个文件里没有预览图。',
+  });
+  setMeta(fmtSize(rec.file.size) + ' · Sketch 预览');
+  addViewAsZipAction(rec);
+  if (hero) addAction('导出预览图', () => downloadBlob(baseName(rec.name) + '_preview.png', hero));
+  addRevealAction(rec);
+}
+
+async function viewProcreate(rec) {
+  const zip = await JSZip.loadAsync(await rec.file.arrayBuffer());
+  const hero = await firstExisting(zip, ['QuickLook/Thumbnail.png', 'QuickLook/thumbnail.png']);
+  renderDesignPreview({
+    hero,
+    hint: hero ? 'Procreate 内置缩略图。完整画布请在 iPad 的 Procreate 中打开。' : '这个文件里没有缩略图。',
+  });
+  setMeta(fmtSize(rec.file.size) + ' · Procreate 预览');
+  addViewAsZipAction(rec);
+  if (hero) addAction('导出预览图', () => downloadBlob(baseName(rec.name) + '_thumbnail.png', hero));
+  addRevealAction(rec);
+}
+
+async function viewXd(rec) {
+  const zip = await JSZip.loadAsync(await rec.file.arrayBuffer());
+  const hero = await firstExisting(zip, ['preview.png', 'thumbnail.png']);
+  renderDesignPreview({
+    hero,
+    hint: hero ? 'Adobe XD 内置预览图。' : '这个文件里没有预览图。',
+  });
+  setMeta(fmtSize(rec.file.size) + ' · XD 预览');
+  addViewAsZipAction(rec);
+  if (hero) addAction('导出预览图', () => downloadBlob(baseName(rec.name) + '_preview.png', hero));
+  addRevealAction(rec);
+}
+
+async function viewFig(rec) {
+  const bytes = new Uint8Array(await rec.file.arrayBuffer());
+  const isZip = bytes[0] === 0x50 && bytes[1] === 0x4B;
+
+  if (isZip) {
+    const zip = await JSZip.loadAsync(bytes.buffer);
+    const hero = await firstExisting(zip, ['thumbnail.png', 'preview.png']);
+    const metaRows = [];
+    try {
+      const meta = JSON.parse(await zip.file('meta.json').async('text'));
+      for (const [k, v] of Object.entries(meta)) {
+        if (typeof v === 'string' || typeof v === 'number') metaRows.push([k, v]);
+      }
+    } catch {}
+    const gallery = [];
+    const imgFiles = Object.values(zip.files).filter(f => !f.dir && /^images\//.test(f.name)).slice(0, 60);
+    for (const f of imgFiles) {
+      const blob = await f.async('blob');
+      const head = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+      const mime = sniffImageMime(head);
+      if (mime) {
+        gallery.push({
+          name: f.name.split('/').pop() + (mime === 'image/png' ? '.png' : '.jpg'),
+          blob: new Blob([blob], { type: mime }),
+        });
+      }
+    }
+    renderDesignPreview({
+      hero, metaRows, gallery,
+      hint: 'Figma 本地文件预览：缩略图 + 内嵌素材。完整画布请在 Figma 中打开（可拖入 figma.com 导入）。',
+    });
+    setMeta(fmtSize(rec.file.size) + ` · Figma 预览${gallery.length ? ' · ' + gallery.length + ' 个素材' : ''}`);
+  } else {
+    // 旧版原始 fig-kiwi 二进制：尽力提取内嵌图片
+    const pngs = extractPngs(bytes);
+    const jpegs = extractJpegs(bytes, 20000, 12);
+    const gallery = [
+      ...pngs.map((b, i) => ({ name: `image_${i + 1}.png`, blob: new Blob([b], { type: 'image/png' }) })),
+      ...jpegs.map((b, i) => ({ name: `photo_${i + 1}.jpg`, blob: new Blob([b], { type: 'image/jpeg' }) })),
+    ];
+    renderDesignPreview({
+      gallery,
+      hint: gallery.length
+        ? '旧版 Figma 二进制格式：已提取内嵌素材。完整画布请在 Figma 中打开。'
+        : '旧版 Figma 二进制格式，画布数据经过压缩，无法直接预览。请在 Figma 中打开（拖入 figma.com 即可导入）。',
+    });
+    setMeta(fmtSize(rec.file.size) + ' · Figma（旧版格式）');
+  }
+  addViewAsZipAction(rec);
+  addRevealAction(rec);
+}
+
+/* ---------- XMind ---------- */
+
+function xmindCountTopics(t) {
+  const kids = (t.children && t.children.attached) || [];
+  return 1 + kids.reduce((n, k) => n + xmindCountTopics(k), 0);
+}
+
+function xmindTopicNode(t, depth) {
+  const kids = (t.children && t.children.attached) || [];
+  const title = t.title || '(空)';
+  const line = el('div', 'xm-line');
+  const label = el('span', 'xm-title', title);
+  if (t.href) {
+    const a = el('a', 'xm-link', ' ↗');
+    a.href = t.href; a.target = '_blank'; a.rel = 'noopener';
+    label.appendChild(a);
+  }
+  line.appendChild(label);
+  for (const lb of t.labels || []) line.appendChild(el('span', 'xm-chip', lb));
+  const note = t.notes && t.notes.plain && t.notes.plain.content;
+
+  if (!kids.length) {
+    const leaf = el('div', 'xm-leaf');
+    leaf.appendChild(line);
+    if (note) leaf.appendChild(el('div', 'xm-note', note));
+    return leaf;
+  }
+  const det = el('details');
+  if (depth < 2) det.open = true;
+  const sum = el('summary');
+  sum.appendChild(line);
+  sum.appendChild(el('span', 'xm-count', String(xmindCountTopics(t) - 1)));
+  det.appendChild(sum);
+  if (note) det.appendChild(el('div', 'xm-note', note));
+  const kidsBox = el('div', 'xm-kids');
+  for (const k of kids) kidsBox.appendChild(xmindTopicNode(k, depth + 1));
+  det.appendChild(kidsBox);
+  return det;
+}
+
+function xmindFromXml(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  function topicFrom(node) {
+    const t = { title: '', children: { attached: [] } };
+    for (const c of node.children) {
+      if (c.localName === 'title') t.title = c.textContent;
+      if (c.localName === 'children') {
+        for (const ts of c.children) {
+          if (ts.localName === 'topics' && (ts.getAttribute('type') || 'attached') === 'attached') {
+            for (const sub of ts.children) {
+              if (sub.localName === 'topic') t.children.attached.push(topicFrom(sub));
+            }
+          }
+        }
+      }
+    }
+    return t;
+  }
+  const sheets = [];
+  for (const sheet of doc.getElementsByTagName('sheet')) {
+    const topic = [...sheet.children].find(c => c.localName === 'topic');
+    const titleEl = [...sheet.children].find(c => c.localName === 'title');
+    if (topic) sheets.push({ title: titleEl ? titleEl.textContent : '', rootTopic: topicFrom(topic) });
+  }
+  return sheets;
+}
+
+function xmindToMarkdown(sheets) {
+  const lines = [];
+  for (const sheet of sheets) {
+    const root = sheet.rootTopic || {};
+    lines.push('# ' + (root.title || sheet.title || 'Mind Map'));
+    (function walk(t, depth) {
+      const kids = (t.children && t.children.attached) || [];
+      for (const k of kids) {
+        lines.push('  '.repeat(depth) + '- ' + (k.title || '').replace(/\n/g, ' '));
+        const note = k.notes && k.notes.plain && k.notes.plain.content;
+        if (note) lines.push('  '.repeat(depth + 1) + '> ' + note.replace(/\n/g, ' '));
+        walk(k, depth + 1);
+      }
+    })(root, 0);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+async function viewXmind(rec) {
+  const zip = await JSZip.loadAsync(await rec.file.arrayBuffer());
+  let sheets = null;
+  const cj = zip.file('content.json');
+  if (cj) {
+    sheets = JSON.parse(await cj.async('text'));
+  } else {
+    const cx = zip.file('content.xml');
+    if (cx) sheets = xmindFromXml(await cx.async('text'));
+  }
+  if (!sheets || !sheets.length) throw new Error('无法解析 XMind 内容');
+
+  const scroller = el('div', 'viewer-full');
+  scroller.style.cssText = 'overflow:auto;height:100%';
+  const page = el('div', 'xm-page');
+  let total = 0;
+  for (const sheet of sheets) {
+    const root = sheet.rootTopic;
+    if (!root) continue;
+    total += xmindCountTopics(root);
+    if (sheets.length > 1) page.appendChild(el('div', 'xm-sheet-title', '画布：' + (sheet.title || '')));
+    const rootBox = el('div', 'xm-root');
+    rootBox.appendChild(el('h2', 'xm-center', root.title || ''));
+    const kids = (root.children && root.children.attached) || [];
+    for (const k of kids) rootBox.appendChild(xmindTopicNode(k, 1));
+    page.appendChild(rootBox);
+  }
+  scroller.appendChild(page);
+  ui.viewer.appendChild(scroller);
+  setMeta(`${sheets.length} 张画布 · ${total} 个主题 · ${fmtSize(rec.file.size)}`);
+
+  addAction('全部展开', () => page.querySelectorAll('details').forEach(d => d.open = true));
+  addAction('全部折叠', () => page.querySelectorAll('details').forEach(d => d.open = false));
+  addSep();
+  addAction('导出 Markdown', () => downloadBlob(baseName(rec.name) + '.md',
+    new Blob([xmindToMarkdown(sheets)], { type: 'text/markdown' })));
+  addRevealAction(rec);
+}
+
+/* ---------- Claude 技能包（.skill） ---------- */
+
+async function viewSkill(rec) {
+  const buf = await rec.file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let mdText = null;
+  let zip = null;
+  let resources = [];
+
+  if (bytes[0] === 0x50 && bytes[1] === 0x4B) {
+    zip = await JSZip.loadAsync(buf);
+    const candidates = Object.values(zip.files)
+      .filter(f => !f.dir && /(^|\/)skill\.md$/i.test(f.name) && !isJunkEntry(f.name))
+      .sort((a, b) => a.name.length - b.name.length);
+    if (candidates.length) mdText = await candidates[0].async('text');
+    resources = Object.values(zip.files)
+      .filter(f => !f.dir && !isJunkEntry(f.name) && (!candidates.length || f.name !== candidates[0].name))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    mdText = (await readText(rec)).text;
+  }
+
+  // 拆 frontmatter
+  let meta = {};
+  let body = mdText || '';
+  const fm = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(body);
+  if (fm) {
+    try { meta = yamlLoad(fm[1]) || {}; body = fm[2]; } catch {}
+  }
+
+  const scroller = el('div', 'viewer-full');
+  scroller.style.cssText = 'overflow:auto;height:100%';
+  const page = el('div', 'viewer-pad');
+
+  const head = el('div', 'skill-head');
+  head.appendChild(el('div', 'skill-kind', 'CLAUDE 技能包'));
+  head.appendChild(el('h1', 'skill-name', meta.name || baseName(rec.name)));
+  if (meta.description) head.appendChild(el('p', 'skill-desc', String(meta.description)));
+  const chips = el('div', 'skill-chips');
+  for (const [k, v] of Object.entries(meta)) {
+    if (k === 'name' || k === 'description') continue;
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+      chips.appendChild(el('span', 'xm-chip', `${k}: ${v}`));
+    }
+  }
+  if (chips.children.length) head.appendChild(chips);
+  page.appendChild(head);
+
+  if (body.trim()) {
+    const doc = el('div', 'doc-render');
+    renderMarkdownInto(doc, body);
+    page.appendChild(doc);
+  } else if (!mdText) {
+    page.appendChild(el('p', 'design-hint', '这个技能包里没有找到 SKILL.md。'));
+  }
+
+  if (resources.length) {
+    page.appendChild(el('div', 'gallery-title', `捆绑资源（${resources.length}）· 点击预览`));
+    const list = el('ul', 'zip-list');
+    list.style.padding = '4px 0 20px';
+    const parentRec = rec;
+    for (const f of resources) {
+      const li = el('li', 'z-file');
+      li.append(el('span', null, '📄'), el('span', null, f.name),
+        el('span', 'z-size', fmtSize(f._data ? f._data.uncompressedSize : null)));
+      li.onclick = async () => {
+        const blob = await f.async('blob');
+        const inner = new File([blob], f.name.split('/').pop());
+        await openRecord({ id: nextId++, name: inner.name, file: inner });
+        addSep();
+        addAction('← 返回技能包', () => openRecord(parentRec, { force: false }));
+      };
+      list.appendChild(li);
+    }
+    page.appendChild(list);
+  }
+
+  scroller.appendChild(page);
+  ui.viewer.appendChild(scroller);
+  setMeta(`${resources.length + (mdText && zip ? 1 : 0) || 1} 个文件 · ${fmtSize(rec.file.size)}`);
+
+  if (mdText) addAction('导出 SKILL.md', () => downloadBlob('SKILL.md', new Blob([mdText], { type: 'text/markdown' })));
+  addRevealAction(rec);
+}
+
+/* ---------- 其他专业格式：给出明确指引 ---------- */
+
+function viewDesignHint(rec, ext) {
+  const tips = {
+    eps: 'EPS 是 PostScript 格式，浏览器无法渲染。用 Illustrator/Photoshop 转成 PDF 或 PNG 再打开。',
+    indd: 'InDesign 工程文件。请在 InDesign 中导出 PDF 后打开。',
+    idml: 'InDesign 交换格式。请在 InDesign 中导出 PDF 后打开。',
+    afdesign: 'Affinity Designer 工程文件。请在 Affinity 中导出 PDF/PNG 后打开。',
+    afphoto: 'Affinity Photo 工程文件。请在 Affinity 中导出 PNG/PSD 后打开。',
+    clip: 'Clip Studio Paint 工程文件。请在 CSP 中导出 PNG/PSD 后打开。',
+    cdr: 'CorelDRAW 工程文件。请导出为 PDF/SVG 后打开。',
+  };
+  showInfo('🎨', `暂不支持 .${ext} 的直接渲染`, tips[ext] || '');
 }
 
 /* ============================== 事件绑定 ============================== */

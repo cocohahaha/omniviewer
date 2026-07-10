@@ -44,10 +44,19 @@ cd locallens
 | 代码 | 40+ 语言 | 高亮、编辑保存、复制全文、手动切换编码 |
 | 图片 | PNG/JPG/GIF/WebP/AVIF/BMP/ICO/SVG | 缩放、格式互转 |
 | 图片 | **HEIC/HEIF**（iPhone 照片） | 本地解码预览、导出 JPG |
+| 图片 | **TIFF** | 本地解码渲染、转 PNG/JPG |
+| 图片 | **相机 RAW**（CR2/CR3/NEF/ARW/DNG/RAF/ORF 等） | 提取内嵌预览图（自动跳过浏览器解不了的无损 JPEG 段）、导出 JPG |
+| 设计 | **Photoshop (.psd/.psb)** | 渲染合成图、图层结构列表、导出 PNG |
+| 设计 | **Illustrator (.ai)** | PDF 兼容模式直接渲染（Illustrator 默认开启），缩放、提取文字 |
+| 设计 | **Figma (.fig)** | 缩略图 + 元信息 + 全部内嵌素材图集，可逐个导出 |
+| 设计 | **Sketch** | 内置预览图、页面与画板清单 |
+| 设计 | **Adobe XD / Procreate** | 内置预览图导出 |
+| 思维 | **XMind** | 完整导图大纲（可折叠、备注、标签、链接）、导出 Markdown |
+| 技能 | **Claude 技能包 (.skill)** | 渲染 SKILL.md（frontmatter 元信息卡片）、捆绑资源逐个预览 |
 | 视频 | MP4/WebM/MOV/M4V | 播放、截取当前帧 |
 | 音频 | MP3/WAV/FLAC/M4A/AAC/OGG | 播放 |
 | 压缩包 | ZIP/EPUB/JAR/APK + **TAR/GZ/TGZ** | 列出内容（自动过滤 macOS 垃圾文件），点开内部文件直接预览 |
-| 3D | GLB/GLTF/OBJ/STL | 实时渲染，旋转/缩放/平移 |
+| 3D | GLB/GLTF/OBJ/STL/**FBX** | 实时渲染，旋转/缩放/平移 |
 | 字体 | TTF/OTF/WOFF/WOFF2 | 多字号预览、自定义试字 |
 | 其他 | 未识别格式 | 文本自动嗅探（含编码），二进制转十六进制查看 |
 
@@ -71,14 +80,17 @@ cd locallens
 
 前端为纯静态页面 + 一个约 100 行的 Python 标准库服务（`server.py`，负责路径直开与写回）。无构建步骤，无 npm install，全部第三方库已打包在 `vendor/`（离线可用）：
 
-[pdf.js](https://mozilla.github.io/pdf.js/) · [SheetJS](https://sheetjs.com/) · [mammoth.js](https://github.com/mwilliamson/mammoth.js) · [marked](https://marked.js.org/) · [highlight.js](https://highlightjs.org/) · [JSZip](https://stuk.github.io/jszip/) · [fflate](https://github.com/101arrowz/fflate) · [three.js](https://threejs.org/) · [js-yaml](https://github.com/nodeca/js-yaml) · [heic-to](https://github.com/hoppergee/heic-to)
+[pdf.js](https://mozilla.github.io/pdf.js/) · [SheetJS](https://sheetjs.com/) · [mammoth.js](https://github.com/mwilliamson/mammoth.js) · [marked](https://marked.js.org/) · [highlight.js](https://highlightjs.org/) · [JSZip](https://stuk.github.io/jszip/) · [fflate](https://github.com/101arrowz/fflate) · [three.js](https://threejs.org/) · [js-yaml](https://github.com/nodeca/js-yaml) · [heic-to](https://github.com/hoppergee/heic-to) · [ag-psd](https://github.com/Agamnentzar/ag-psd) · [UTIF](https://github.com/photopea/UTIF.js)
 
-PPTX 大纲、TAR 解析、CSV 解析、编码嗅探为自研实现。pdf.js、three.js、HEIC 解码均按需动态加载，首屏无负担。
+PPTX 大纲、XMind 大纲、Figma/Sketch/XD/Procreate 预览提取、RAW 内嵌图提取、TAR 解析、CSV 解析、编码嗅探为自研实现。pdf.js、three.js、ag-psd、HEIC 解码均按需动态加载，首屏无负担。
 
 ## 已知边界
 
 - 旧版二进制 Office（.doc/.ppt）与 iWork 格式：给出转换指引，不直接渲染。
 - RAR/7z：建议先用 [Keka](https://www.keka.io/) 解压。
+- EPS/InDesign/Affinity/Clip Studio 工程文件：给出导出建议，不直接渲染。
+- 设计文件（Figma/Sketch/XD/Procreate）显示的是内置预览与素材，不是可编辑画布。
+- PSD 需以「最大兼容」保存才有合成图（Photoshop 默认开启）；.ai 需开启 PDF 兼容（Illustrator 默认开启）。
 - `.gltf` 引用外部资源时请改用打包的 `.glb`。
 - 视频解码能力取决于浏览器（MKV/HEVC 建议用 IINA/VLC）。
 - 大表格显示前 3000 行（导出转换不受影响）。
