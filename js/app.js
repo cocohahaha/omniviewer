@@ -1,6 +1,6 @@
-/* LocalLens v2 — 本地万能文件预览与编辑
+/* OmniViewer — 所有文件的阅读器
  * 纯前端实现，配合可选的本地 server.py（路径直开、写回保存）。
- * 所有解析、渲染都发生在本机浏览器里。
+ * 所有解析、渲染都发生在本机浏览器里。界面遵循 觉然 JORAN 设计系统。
  */
 import { marked } from '../vendor/marked.esm.js';
 import { load as yamlLoad, dump as yamlDump } from '../vendor/js-yaml.mjs';
@@ -111,9 +111,9 @@ function addEncodingSelect(rec, detected) {
 
 /* ============================== 最近打开（仅限有路径的文件） ============================== */
 
-const RECENT_KEY = 'locallens-recent';
+const RECENT_KEY = 'omniviewer-recent';
 function getRecent() {
-  try { return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || localStorage.getItem('locallens-recent')) || []; } catch { return []; }
 }
 function pushRecent(path, name) {
   const list = getRecent().filter(r => r.path !== path);
@@ -209,7 +209,7 @@ async function openRecord(rec, opts = {}) {
     if (rec.file.size > 3 * 1048576) showLoading('正在打开 ' + rec.name + ' …');
     await viewer(rec, ext);
   } catch (err) {
-    console.error('[LocalLens]', err);
+    console.error('[OmniViewer]', err);
     ui.viewer.innerHTML = '';
     showInfo('⚠️', `打开失败：${err.message || err}`,
       '如果这是一个常见格式，欢迎把文件类型反馈给作者。');
@@ -315,7 +315,7 @@ async function saveCurrent() {
       toast('已保存到 ' + rec.path);
       return;
     } catch (err) {
-      console.warn('[LocalLens] 服务写回失败', err);
+      console.warn('[OmniViewer] 服务写回失败', err);
     }
   }
   // 2) File System Access API 句柄：直接写回
@@ -333,7 +333,7 @@ async function saveCurrent() {
       toast('已保存 ✓');
       return;
     } catch (err) {
-      console.warn('[LocalLens] 句柄写入失败，降级为另存', err);
+      console.warn('[OmniViewer] 句柄写入失败，降级为另存', err);
     }
   }
   await saveAs(text);
@@ -1182,7 +1182,7 @@ async function view3D(rec, ext) {
   stage.insertBefore(renderer.domElement, stage.firstChild);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x14151a);
+  scene.background = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--ui-stage').trim() || '#10182C');
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 5000);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 2.2));
   const dir = new THREE.DirectionalLight(0xffffff, 2.4);
@@ -1262,7 +1262,7 @@ async function view3D(rec, ext) {
 let fontSeq = 0;
 async function viewFont(rec) {
   const buf = await rec.file.arrayBuffer();
-  const family = 'LL_Font_' + (++fontSeq);
+  const family = 'OV_Font_' + (++fontSeq);
   const face = new FontFace(family, buf);
   await face.load();
   document.fonts.add(face);
@@ -1933,9 +1933,58 @@ $('#btn-sidebar').onclick = toggleSidebar;
 
 function toggleSidebar() {
   document.body.classList.toggle('sb-closed');
-  localStorage.setItem('locallens-sb', document.body.classList.contains('sb-closed') ? 'closed' : 'open');
+  localStorage.setItem('omniviewer-sb', document.body.classList.contains('sb-closed') ? 'closed' : 'open');
 }
-if (localStorage.getItem('locallens-sb') === 'closed') document.body.classList.add('sb-closed');
+if (localStorage.getItem('omniviewer-sb') === 'closed') document.body.classList.add('sb-closed');
+
+/* —— 主题（觉然双色系：象牙白 / 深海靛黑）—— */
+const THEME_KEY = 'omniviewer-theme';
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const hl = $('#hljs-theme');
+  if (hl) hl.href = theme === 'dark'
+    ? 'vendor/hljs/styles/github-dark.min.css'
+    : 'vendor/hljs/styles/github.min.css';
+  drawContour();
+}
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+$('#btn-theme').onclick = toggleTheme;
+
+/* —— 首页等高线装饰（三层正弦叠加，觉然 makeContour 同式）—— */
+function drawContour() {
+  const c = $('#contour');
+  if (!c || !c.parentElement) return;
+  c.width = c.parentElement.clientWidth || innerWidth;
+  const w = c.width, h = c.height, lines = 7, seed = 5;
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--ui-accent').trim();
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  const gap = h / (lines + 1);
+  for (let i = 0; i < lines; i++) {
+    const t = i / (lines - 1);
+    ctx.globalAlpha = Math.max(0.03, 0.12 * (1 - t * 0.5));
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = Math.max(1.2, w / 900);
+    ctx.beginPath();
+    const baseY = gap * (i + 0.7);
+    for (let x = 0; x <= w; x += 5) {
+      const p = (x / w) * Math.PI * 2;
+      const y = baseY
+        + Math.sin(p * 0.8 + i * 0.34 + seed * 1.3) * gap * 0.85
+        + Math.sin(p * 1.9 + i * 0.57 + seed * 2.9) * gap * 0.45
+        + Math.sin(p * 3.7 + i * 0.86 + seed * 4.1) * gap * 0.18;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+}
+addEventListener('resize', drawContour);
+applyTheme(localStorage.getItem(THEME_KEY) ||
+  (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 
 /* 拖拽（支持文件与文件夹） */
 let dragDepth = 0;

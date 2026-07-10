@@ -1,26 +1,28 @@
-# LocalLens 🔍
+# OmniViewer
 
-**本地万能文件预览与编辑器。一个窗口，打开一切。**
+**所有文件的阅读器。一个窗口，打开就看见。**
 
-拖一个文件进来就能打开：PDF、Word、PPT、Excel、Markdown、图片、音视频、代码、压缩包、3D 模型、字体。文本类文件可以直接编辑并写回原文件。
+拖一个文件进来就能打开：PDF、Word、PPT、Excel、Markdown、图片、设计稿（PSD/AI/Figma/Sketch）、相机 RAW、音视频、代码、压缩包、3D 模型、思维导图、字体。文本类文件可以直接编辑并写回原文件。
 
 没有账号，没有订阅，没有云端。所有解析和渲染都发生在你自己的电脑上，服务只绑定 127.0.0.1，**任何数据都不会离开本机**。
+
+界面遵循 觉然 JORAN 设计系统：象牙白与深海靛黑双主题，宋体正文排版，安静克制。
 
 ![](https://img.shields.io/badge/依赖-仅需_Python_3-brightgreen) ![](https://img.shields.io/badge/运行-100%25_本地-blue) ![](https://img.shields.io/badge/许可-MIT-lightgrey)
 
 ## 快速开始（macOS）
 
 ```bash
-git clone https://github.com/cocohahaha/locallens.git
-cd locallens
-./make-app.command   # 生成 LocalLens.app（只需一次）
+git clone https://github.com/cocohahaha/omniviewer.git
+cd omniviewer
+./make-app.command   # 生成 OmniViewer.app（只需一次）
 ```
 
-生成的 **LocalLens.app** 就是日常入口：
+生成的 **OmniViewer.app** 就是日常入口：
 
 - 双击启动，得到一个无浏览器边框的独立应用窗口；
 - 把任意文件**拖到它的图标上**直接打开；
-- 在文件上「右键 → 打开方式 → LocalLens」；
+- 在文件上「右键 → 打开方式 → OmniViewer」；
 - 建议把它拖进「应用程序」并固定到 Dock。
 
 不想生成 App 的话，双击 `start.command` 也一样能用。
@@ -43,20 +45,18 @@ cd locallens
 | 文本 | JSON / JSONL / YAML | 自动美化、高亮、编辑、JSON ↔ YAML 互转 |
 | 代码 | 40+ 语言 | 高亮、编辑保存、复制全文、手动切换编码 |
 | 图片 | PNG/JPG/GIF/WebP/AVIF/BMP/ICO/SVG | 缩放、格式互转 |
-| 图片 | **HEIC/HEIF**（iPhone 照片） | 本地解码预览、导出 JPG |
-| 图片 | **TIFF** | 本地解码渲染、转 PNG/JPG |
-| 图片 | **相机 RAW**（CR2/CR3/NEF/ARW/DNG/RAF/ORF 等） | 提取内嵌预览图（自动跳过浏览器解不了的无损 JPEG 段）、导出 JPG |
-| 设计 | **Photoshop (.psd/.psb)** | 渲染合成图、图层结构列表、导出 PNG |
-| 设计 | **Illustrator (.ai)** | PDF 兼容模式直接渲染（Illustrator 默认开启），缩放、提取文字 |
-| 设计 | **Figma (.fig)** | 缩略图 + 元信息 + 全部内嵌素材图集，可逐个导出 |
-| 设计 | **Sketch** | 内置预览图、页面与画板清单 |
-| 设计 | **Adobe XD / Procreate** | 内置预览图导出 |
-| 思维 | **XMind** | 完整导图大纲（可折叠、备注、标签、链接）、导出 Markdown |
-| 技能 | **Claude 技能包 (.skill)** | 渲染 SKILL.md（frontmatter 元信息卡片）、捆绑资源逐个预览 |
-| 视频 | MP4/WebM/MOV/M4V | 播放、截取当前帧 |
-| 音频 | MP3/WAV/FLAC/M4A/AAC/OGG | 播放 |
-| 压缩包 | ZIP/EPUB/JAR/APK + **TAR/GZ/TGZ** | 列出内容（自动过滤 macOS 垃圾文件），点开内部文件直接预览 |
-| 3D | GLB/GLTF/OBJ/STL/**FBX** | 实时渲染，旋转/缩放/平移 |
+| 图片 | HEIC/HEIF（iPhone 照片） | 本地解码预览、导出 JPG |
+| 图片 | TIFF | 本地解码渲染、转 PNG/JPG |
+| 图片 | 相机 RAW（CR2/CR3/NEF/ARW/DNG/RAF/ORF 等） | 提取内嵌预览图、导出 JPG |
+| 设计 | Photoshop (.psd/.psb) | 渲染合成图、图层结构列表、导出 PNG |
+| 设计 | Illustrator (.ai) | PDF 兼容模式直接渲染、缩放、提取文字 |
+| 设计 | Figma (.fig) | 缩略图 + 元信息 + 内嵌素材图集，逐个导出 |
+| 设计 | Sketch / Adobe XD / Procreate | 内置预览图、页面与画板清单 |
+| 思维 | XMind | 完整导图大纲（折叠、备注、标签）、导出 Markdown |
+| 技能 | Claude 技能包 (.skill) | 渲染 SKILL.md 元信息卡片、捆绑资源逐个预览 |
+| 音视频 | MP4/WebM/MOV + MP3/WAV/FLAC/M4A 等 | 播放、视频截帧 |
+| 压缩包 | ZIP/EPUB/JAR/APK + TAR/GZ/TGZ | 列出内容（过滤系统噪音文件），点开内部文件直接预览 |
+| 3D | GLB/GLTF/OBJ/STL/FBX | 实时渲染，旋转/缩放/平移 |
 | 字体 | TTF/OTF/WOFF/WOFF2 | 多字号预览、自定义试字 |
 | 其他 | 未识别格式 | 文本自动嗅探（含编码），二进制转十六进制查看 |
 
@@ -64,7 +64,11 @@ cd locallens
 
 ## 界面
 
-左侧固定侧栏：打开按钮、已打开文件列表、最近打开（可 ⌘B 收起）。顶部常驻工具栏：当前文件信息 + 当前格式可用的所有操作。支持一次拖入多个文件甚至整个文件夹，在侧栏里切换。
+- **双主题**：象牙白（默认）与深海靛黑，右上角一键切换，跟随系统偏好。
+- **常驻侧栏**：打开按钮、已打开文件列表、最近打开（⌘B 收起）。
+- **常驻工具栏**：当前文件信息 + 当前格式可用的所有操作。
+- 支持一次拖入多个文件甚至整个文件夹。
+- 品牌字体（Manrope / Newsreader）已本地打包，离线可用；中文回退系统宋体与苹方。
 
 快捷键：`⌘O` 打开 · `⌘S` 保存 · `⌘B` 侧栏 · `Esc` 回首页。
 
@@ -74,7 +78,7 @@ cd locallens
 - 拖拽或选择器打开的文件（Chrome/Edge）：通过浏览器授权后写回。
 - 其余情况降级为「另存为」。
 
-本地服务的写回接口只接受来自 LocalLens 自己页面的请求（Origin 校验），且只允许覆盖已存在的文件；文件读取接口同样有来源校验。服务永远只监听 127.0.0.1。
+本地服务的写回接口只接受来自 OmniViewer 自己页面的请求（Origin 校验），且只允许覆盖已存在的文件；文件读取接口同样有来源校验。服务永远只监听 127.0.0.1。
 
 ## 技术说明
 
@@ -97,4 +101,4 @@ PPTX 大纲、XMind 大纲、Figma/Sketch/XD/Procreate 预览提取、RAW 内嵌
 
 ## 许可
 
-MIT
+MIT · 觉然 JORAN 出品

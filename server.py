@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""LocalLens 本地服务（纯标准库，无任何第三方依赖）。
+"""OmniViewer 本地服务（纯标准库，无任何第三方依赖）。
 
 职责：
 1. 提供应用静态文件；
@@ -139,7 +139,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main():
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"LocalLens 运行中: http://127.0.0.1:{PORT}/  (根目录 {ROOT})")
+    print(f"OmniViewer 运行中: http://127.0.0.1:{PORT}/  (根目录 {ROOT})")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -1,4 +1,4 @@
-app: LocalLens
+app: OmniViewer
 offline: true
 viewers:
   - image

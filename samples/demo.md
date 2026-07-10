@@ -1,4 +1,4 @@
-# LocalLens 示例文档
+# OmniViewer 示例文档
 
 这是一个 **Markdown** 示例，用来演示预览和编辑。
 

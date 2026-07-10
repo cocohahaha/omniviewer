@@ -1,8 +1,8 @@
 #!/bin/zsh
-# LocalLens 启动器：起本地服务并打开独立应用窗口。
+# OmniViewer 启动器：起本地服务并打开独立应用窗口。
 # 双击即用；重复双击会复用已在运行的服务。
 cd "$(dirname "$0")"
-PORT=${LOCALLENS_PORT:-8437}
+PORT=${OMNIVIEWER_PORT:-8437}
 URL="http://127.0.0.1:$PORT/"
 
 if ! lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then

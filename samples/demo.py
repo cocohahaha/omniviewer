@@ -1,4 +1,4 @@
-"""LocalLens 代码高亮示例"""
+"""OmniViewer 代码高亮示例"""
 from dataclasses import dataclass
 
 @dataclass

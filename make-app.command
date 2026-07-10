@@ -1,13 +1,13 @@
 #!/bin/zsh
-# 生成 LocalLens.app：一个可以双击启动、也可以把文件拖到图标上直接打开的 Mac 应用。
-# 运行一次即可，之后建议把生成的 LocalLens.app 拖进「应用程序」文件夹。
+# 生成 OmniViewer.app：一个可以双击启动、也可以把文件拖到图标上直接打开的 Mac 应用。
+# 运行一次即可，之后建议把生成的 OmniViewer.app 拖进「应用程序」文件夹。
 # 还可以在任意文件上「右键 → 打开方式 → LocalLens」。
 set -e
 cd "$(dirname "$0")"
 LENS_DIR="$(pwd)"
-APP="$LENS_DIR/LocalLens.app"
+APP="$LENS_DIR/OmniViewer.app"
 
-TMP_SCRIPT="$(mktemp -t locallens).applescript"
+TMP_SCRIPT="$(mktemp -t omniviewer).applescript"
 cat > "$TMP_SCRIPT" <<APPLESCRIPT
 on ensureServer()
 	set lensDir to "$LENS_DIR"
@@ -51,13 +51,13 @@ rm -f "$TMP_SCRIPT"
 /usr/libexec/PlistBuddy -c 'Add :CFBundleDocumentTypes:0:LSItemContentTypes array' "$APP/Contents/Info.plist" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c 'Add :CFBundleDocumentTypes:0:LSItemContentTypes:0 string public.data' "$APP/Contents/Info.plist" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c 'Add :CFBundleDocumentTypes:0:LSItemContentTypes:1 string public.item' "$APP/Contents/Info.plist" 2>/dev/null || true
-/usr/libexec/PlistBuddy -c 'Set :CFBundleName LocalLens' "$APP/Contents/Info.plist" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c 'Add :CFBundleName string LocalLens' "$APP/Contents/Info.plist" 2>/dev/null || true
+/usr/libexec/PlistBuddy -c 'Set :CFBundleName OmniViewer' "$APP/Contents/Info.plist" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c 'Add :CFBundleName string OmniViewer' "$APP/Contents/Info.plist" 2>/dev/null || true
 
 # 刷新 LaunchServices 注册
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP" >/dev/null 2>&1 || true
 
 echo "✅ 已生成 $APP"
-echo "   · 双击启动 LocalLens"
+echo "   · 双击启动 OmniViewer"
 echo "   · 把文件拖到它的图标上直接打开"
 echo "   · 建议拖入「应用程序」并固定到 Dock"
